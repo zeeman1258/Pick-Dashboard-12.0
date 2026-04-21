@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {theme: {extend: {colors: {
+      bg: '#f7f6f2', surface: '#f9f8f5', text: '#28251d', muted: '#7a7974',
+      primary: '#01696f', primary2: '#0c4e54', border: '#d4d1ca'
+    }}}}
+  </script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .metric { font-size: 2.5em; font-weight: 700; color: var(--primary); }
+    .badge { background: var(--primary); color: white; padding: 4px 10px; border-radius: 999px; font-size: 13px; }
+    canvas { max-height: 400px; }
+  </style>
+</head>
+<body class="p-8 max-w-7xl mx-auto">
+  <div class="mb-12">
+    <h1 class="text-4xl font-bold mb-2">📊 Analytics Dashboard</h1>
+    <p class="text-muted text-lg">Product performance across all saved routes</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <div class="card text-center cursor-pointer p-8 hover:shadow-lg transition-all" onclick="showPanel('search')">
+      <div class="text-3xl mb-2">🔍</div>
+      <h3 class="font-bold text-xl mb-2">Product Search</h3>
+      <p class="text-muted">Search & compare multiple products over time</p>
+    </div>
+    <div class="card text-center cursor-pointer p-8 hover:shadow-lg transition-all" onclick="showPanel('top')">
+      <div class="text-3xl mb-2">🏆</div>
+      <h3 class="font-bold text-xl mb-2">Top Products</h3>
+      <p class="text-muted">Highest volume items by time range</p>
+    </div>
+    <div class="card text-center cursor-pointer p-8 hover:shadow-lg transition-all" onclick="showPanel('last')">
+      <div class="text-3xl mb-2">📅</div>
+      <h3 class="font-bold text-xl mb-2">Last Night</h3>
+      <p class="text-muted">Yesterday's shipping summary</p>
+    </div>
+  </div>
+
+  <div id="searchPanel" class="hidden">
+    <div class="card">
+      <div class="flex gap-4 items-end mb-6">
+        <input id="productSearch" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Search products by name or ID...">
+        <select id="searchRange" class="p-3 border border-gray-300 rounded-lg">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="365">Last year</option>
+          <option value="9999">All time</option>
+        </select>
+        <button onclick="loadCompare()" class="btn px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Compare</button>
+      </div>
+      <div id="searchResults" class="max-h-64 overflow-y-auto mb-6"></div>
+      <div id="selectedProducts" class="flex flex-wrap gap-2 mb-6"></div>
+      <div id="compareChart"></div>
+    </div>
+  </div>
+
+  <div id="topPanel" class="hidden">
+    <div class="card">
+      <div class="flex gap-4 items-end mb-6">
+        <select id="topRange" class="p-3 border border-gray-300 rounded-lg">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="365">Last year</option>
+          <option value="9999">All time</option>
+        </select>
+        <button onclick="loadTopProducts()" class="btn px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Load Top 25</button>
+      </div>
+      <canvas id="topChart" class="max-h-96"></canvas>
+    </div>
+  </div>
+
+  <div id="lastPanel" class="hidden">
+    <div class="card">
+      <button onclick="loadLastNight()" class="btn mb-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Reload</button>
+      <div id="lastNightContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let products = {};
+    let charts = {};
+    let selected = {};
+
+    function showPanel(id) {
+      document.querySelectorAll('[id$="Panel"]').forEach(p => p.classList.add('hidden'));
+      document.getElementById(id+'Panel').classList.remove('hidden');
+    }
+
+    async function loadProducts() {
+      const r = await fetch('/api/products');
+      products = await r.json();
+    }
+
+    async function searchProducts() {
+      const q = document.getElementById('productSearch').value.toLowerCase();
+      const results = document.getElementById('searchResults');
+      if(q.length < 2) { results.innerHTML = ''; return; }
+      await loadProducts();
+      const matches = Object.entries(products)
+        .filter(([id,name]) => id.includes(q) || name.toLowerCase().includes(q))
+        .slice(0,20);
+      results.innerHTML = matches.map(([id,name]) => 
+        `<div class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer" onclick="toggleProduct('${id}')">
+          <div class="font-mono text-sm">${id}</div>
+          <div>${name}</div>
+        </div>`
+      ).join('');
+    }
+
+    function toggleProduct(id) {
+      if(selected[id]) delete selected[id];
+      else selected[id] = products[id];
+      renderSelected();
+      document.getElementById('searchResults').innerHTML = '';
+    }
+
+    function renderSelected() {
+      const el = document.getElementById('selectedProducts');
+      el.innerHTML = Object.entries(selected).map(([id,name]) =>
+        `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+          ${id}: ${name.slice(0,20)} 
+          <button onclick="toggleProduct('${id}')" class="ml-2 font-bold">×</button>
+        </span>`
+      ).join('');
+    }
+
+    async function loadCompare() {
+      const ids = Object.keys(selected);
+      if(!ids.length) return alert('Select products first');
+      const days = document.getElementById('searchRange').value;
+      const r = await fetch(`/api/compare?ids=${ids.join(',')}&days=${days}`);
+      // chart code here
+      console.log('Compare:', ids, days);
+    }
+
+    async function loadTopProducts() {
+      const days = document.getElementById('topRange').value;
+      const r = await fetch(`/api/top-products?days=${days}`);
+      const data = await r.json();
+      // chart code here
+      console.log('Top:', data);
+    }
+
+    async function loadLastNight() {
+      const r = await fetch('/api/last-night');
+      const data = await r.json();
+      if(!data.date) {
+        document.getElementById('lastNightContent').innerHTML = '<div class="text-gray-500 p-8 text-center">No saved routes yet</div>';
+        return;
+      }
+      let total = 0;
+      const table = data.items.map(item => {
+        total += item.units;
+        return `<tr><td class="font-mono">${item.id}</td><td>${item.name}</td><td class="text-right">${item.units.toLocaleString()}</td></tr>`;
+      }).join('');
+      document.getElementById('lastNightContent').innerHTML = `
+        <div class="text-4xl font-bold mb-4">${total.toLocaleString()} units</div>
+        <div class="text-muted mb-6">${data.date} across ${data.items.length} products</div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead><tr><th>Item ID</th><th>Name</th><th class="text-right">Units</th></tr></thead>
+            <tbody>${table}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    document.getElementById('productSearch').addEventListener('input', (e) => {
+      searchProducts(e.target.value);
+    });
+  </script>
+</body>
+</html>

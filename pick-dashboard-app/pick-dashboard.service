@@ -1,0 +1,17 @@
+[Unit]
+Description=Pick Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pick-dashboard
+EnvironmentFile=/opt/pick-dashboard/.env
+ExecStart=/usr/bin/python3 -m gunicorn -c /opt/pick-dashboard/gunicorn.conf.py wsgi:app
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

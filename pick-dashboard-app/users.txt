@@ -1,0 +1,3 @@
+Pick Dashboard users
+
+username: zeck | password: [hashed only: scrypt:32768:8:1$EzpYoc3hIDhPyWs3$0b52002c66fb6b9c6b4698b09cab3826cd2a7c8ecf0e1d3b75c6644ee5e82856f22d9574d9fc8cd9d1fabad46da8c61c9b1671d29d8dd1bc07ba896c3e6c7bc6] | role: admin
