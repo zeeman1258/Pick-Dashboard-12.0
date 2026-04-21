@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart Pick Dashboard service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart pick-dashboard.service

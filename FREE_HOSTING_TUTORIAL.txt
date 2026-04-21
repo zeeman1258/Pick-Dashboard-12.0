@@ -1,0 +1,134 @@
+Free hosting tutorial for Pick Dashboard (updated for version 1.7)
+
+Best free public option to test this app: Render.
+Why:
+- Render documents Flask deployment directly and supports Gunicorn web services.
+- Render supports environment variables in the dashboard.
+- Railway is not the best choice for truly free long-term use.
+- PythonAnywhere is another free option, but it is more limited and usually uses a username-based subdomain.
+
+Very important warning:
+- This app currently stores SQLite data, request archives, and users.txt on local disk.
+- Render persistent disks require a paid service, not a free one.
+- That means free Render hosting is okay for testing, demos, and light temporary use, but not ideal for important long-term stored data.
+- If you need reliable permanent storage, move later to a paid host or a VPS.
+
+====================================
+FASTEST FREE DEPLOY - RENDER
+====================================
+
+Step 1 - Make sure your files are ready
+Your package already includes:
+- app.py
+- wsgi.py
+- gunicorn.conf.py
+- requirements.txt
+- .env.example
+
+Step 2 - Create a GitHub repo
+1. Extract the zip on your computer.
+2. Put the files into a folder.
+3. Open terminal in that folder.
+4. Run:
+   git init
+   git add .
+   git commit -m "Pick Dashboard 1.7"
+5. Create a new GitHub repository.
+6. Connect and push:
+   git remote add origin YOUR_GITHUB_REPO_URL
+   git branch -M main
+   git push -u origin main
+
+Step 3 - Create the Render service
+1. Sign in to Render.
+2. Click New +.
+3. Choose Web Service.
+4. Connect GitHub.
+5. Select your repo.
+6. Set:
+   - Runtime: Python
+   - Build command: pip install -r requirements.txt
+   - Start command: gunicorn -c gunicorn.conf.py wsgi:app
+7. Choose the free instance if available.
+8. Click Create Web Service.
+
+Step 4 - Add environment variables in Render
+Open your Render service and add:
+- SECRET_KEY = a long random secret
+- MAIN_ADMIN_USERNAME = zeck
+- MAIN_ADMIN_PASSWORD = choose your password
+- HOST = 0.0.0.0
+- Do not add PORT manually on Render unless you have a special reason; Render provides it automatically.
+
+Render supports environment variables in the dashboard settings.
+
+Step 5 - Test the deployment
+1. Wait for the deploy to finish.
+2. Open the public Render URL.
+3. Test the login.
+4. Test /health.
+5. Test creating a user.
+6. Test request feature tickets.
+
+Step 6 - Know what does not fully carry over on free Render
+- Your nightly systemd restart files are for Linux servers and VPS setups, not Render free hosting.
+- Free Render does not give you the same server control as a VPS.
+- Local data written to disk is not as safe as persistent paid storage.
+
+====================================
+SECOND FREE OPTION - PYTHONANYWHERE
+====================================
+
+Good if:
+- You want a quick Python-specific host.
+- You are okay with a USERNAME.pythonanywhere.com site.
+
+Limits:
+- Free accounts are more limited.
+- Custom-domain support is tied to paid plans.
+
+Basic steps:
+1. Create a free PythonAnywhere account.
+2. Upload the app files.
+3. Install requirements in a Bash console.
+4. Create a web app in the Web tab.
+5. Point it to wsgi.py.
+6. Set the environment variables.
+7. Reload the app.
+
+====================================
+HOW TO MAKE THIS APP MORE DEPLOYMENT-READY
+====================================
+
+Already improved:
+- Gunicorn-ready startup.
+- Environment-variable-based main admin and secret key.
+- Health endpoint.
+- Single-file app replacement still keeps database/settings files.
+
+Recommended next upgrades for real hosting:
+1. Replace SQLite with Postgres.
+2. Move request archive files and users.txt out of local disk storage.
+3. Remove plaintext password storage before any public deployment.
+4. Put the app behind Nginx if using a VPS.
+5. Use HTTPS on your public host.
+
+====================================
+BEST PRACTICAL ADVICE
+====================================
+
+For free testing right now:
+- Use Render.
+
+For serious long-term use:
+- Use a cheap VPS or a paid Render service with persistent storage.
+
+If you want, the next update can make the app much safer for public hosting by removing plaintext password storage and switching to a database setup better suited for deployment.
+
+
+Render port troubleshooting:
+- If Render keeps saying it is scanning for an open port, the app usually is not binding to the correct host/port combination.
+- Your app should listen on 0.0.0.0 and use the PORT environment variable provided by Render.
+- The start command should be: gunicorn -c gunicorn.conf.py wsgi:app
+- Do not force Flask debug reloader mode on Render.
+- Check the deploy logs for crashes before the port opens.
